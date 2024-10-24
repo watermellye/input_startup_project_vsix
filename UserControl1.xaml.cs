@@ -212,7 +212,6 @@ namespace input_startup_project
             }
         }
 
-
         private async void OnNavigateToButtonClick(object sender, RoutedEventArgs e)
         {
             _ = await NavigateTo();
@@ -301,9 +300,15 @@ namespace input_startup_project
                 }
                 else
                 {
-                    matchedProjectNames.Sort();
-                    CurrentSelectedProjectName = matchedProjectNames[0];
-                    SetTextToRichTextBox(matchedProjectNames.Select(s => _projectName2Info[s]).ToList(), keywords, $"你要找的项目可能是：{CurrentSelectedProjectName}");
+                    Dictionary<int, List<string>> mismatchCount2ProjectNames = matchedProjectNames
+                        .GroupBy(projectName => GetMatchResult(projectName, keywords).Count(b => !b))
+                        .ToDictionary(group => group.Key, group => group.ToList());
+                    List<string> sortedProjectNames = mismatchCount2ProjectNames
+                        .OrderBy(pair => pair.Key)
+                        .SelectMany(pair => pair.Value.OrderBy(projectName => projectName))
+                        .ToList();
+                    CurrentSelectedProjectName = sortedProjectNames[0];
+                    SetTextToRichTextBox(sortedProjectNames.Select(s => _projectName2Info[s]).ToList(), keywords, $"你要找的项目可能是：{CurrentSelectedProjectName}");
                 }
             }
         }
@@ -320,6 +325,28 @@ namespace input_startup_project
                 this.endIndex = endIndex;
                 this.shouldHighlight = shouldHighlight;
             }
+        }
+
+        private bool[] GetMatchResult(string s, List<string> keywords)
+        {
+            bool[] matched = new bool[s.Length];
+            foreach (string keyword in keywords)
+            {
+                int startIndex = 0;
+                do
+                {
+                    startIndex = s.IndexOf(keyword, startIndex, StringComparison.OrdinalIgnoreCase);
+                    if (startIndex >= 0)
+                    {
+                        for (int i = startIndex; i < startIndex + keyword.Length; ++i)
+                        {
+                            matched[i] = true;
+                        }
+                        startIndex += keyword.Length;
+                    }
+                } while (startIndex >= 0);
+            }
+            return matched;
         }
 
         private async void SetTextToRichTextBox(List<ProjectInfo> projects, List<string> keywords = null, string prefix = "")
@@ -347,23 +374,7 @@ namespace input_startup_project
                     }
                     else
                     {
-                        bool[] matched = new bool[projectName.Length];
-                        foreach (var keyword in keywords)
-                        {
-                            int startIndex = 0;
-                            do
-                            {
-                                startIndex = projectName.IndexOf(keyword, startIndex, StringComparison.OrdinalIgnoreCase);
-                                if (startIndex >= 0)
-                                {
-                                    for (int i = startIndex; i < startIndex + keyword.Length; ++i)
-                                    {
-                                        matched[i] = true;
-                                    }
-                                    startIndex += keyword.Length;
-                                }
-                            } while (startIndex >= 0);
-                        }
+                        bool[] matched = GetMatchResult(projectName, keywords);
 
                         List<CharFragment> fragments = new List<CharFragment>();
                         int head = 0;
