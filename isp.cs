@@ -49,7 +49,8 @@ internal sealed class isp
                 Title = "设置启动项 (按 Esc 关闭窗口)",
                 Content = inputControl,
                 Width = 720,
-                Height = 480
+                Height = 480,
+                Topmost = true
             };
 
             inputWindow.Closed += (s, a) => inputWindow = null;
@@ -69,5 +70,4 @@ internal sealed class isp
         //inputWindow.Activate(); // Bring the existing window to the front.
         //inputWindow.Focus();
     }
-
 }

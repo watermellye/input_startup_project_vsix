@@ -7,6 +7,7 @@ using Microsoft.VisualStudio.Shell.Settings;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -23,13 +24,14 @@ namespace input_startup_project
     public class ProjectInfo
     {
         public string Name { get; set; }
-        public string Path { get; set; }
+
+        public string SolutionExplorerTreePath { get; set; }
         public Project Project { get; set; }
 
-        public ProjectInfo(string name, string path, Project project)
+        public ProjectInfo(string name, string solutionExplorerTreePath, Project project)
         {
             Name = name;
-            Path = path;
+            SolutionExplorerTreePath = solutionExplorerTreePath;
             Project = project;
         }
     }
@@ -179,17 +181,37 @@ namespace input_startup_project
             if (_dte == null)
                 return false;
 
-            if (_projectName2Info.TryGetValue(projectName, out ProjectInfo projectInfo))
+            try
             {
-                _dte.Solution.Properties.Item("StartupProject").Value = projectName;
-                return true;
+                if (_projectName2Info.TryGetValue(projectName, out ProjectInfo projectInfo))
+                {
+                    string projectCfgFileFullpath = projectInfo.Project.FullName;
+                    if (File.Exists(projectCfgFileFullpath))
+                    {
+                        _dte.Solution.SolutionBuild.StartupProjects = projectCfgFileFullpath;
+                    }
+                    else
+                    {
+                        // 使用此方法指定虚拟项目，但有风险。
+                        // 通过 CMake 生成的 VS 工程中，可能存在同名的项目和文件夹。
+                        // 此时，直接传入名字而非完整路径，可能因为尝试指定文件夹为启动项目而抛出异常。
+                        _dte.Solution.Properties.Item("StartupProject").Value = projectName;
+                    }
+                    return true;
+                }
+                else
+                {
+                    ShowInternalError($"[{ProjectNameTextBox.Text} not found");
+                    return false;
+                }
             }
-            else
+            catch (Exception ex)
             {
-                ShowInternalError($"[{ProjectNameTextBox.Text} not found");
+                ShowInternalError($"Failed to set startup project: {ex.Message}\nStack Trace:\n{ex.StackTrace}");
                 return false;
             }
         }
+
 
         private async void OnNavigateToButtonClick(object sender, RoutedEventArgs e)
         {
@@ -209,13 +231,13 @@ namespace input_startup_project
                 UIHierarchyItems rootNodes = _dte.ToolWindows.SolutionExplorer?.UIHierarchyItems;
                 if (rootNodes == null)
                 {
-                    ShowInternalError($"[errorcode=1] Cannot navigate to {projectInfo.Path}");
+                    ShowInternalError($"[errorcode=1] Cannot navigate to {projectInfo.SolutionExplorerTreePath}");
                     return false;
                 }
                 foreach (object _node in rootNodes)
                 {
                     UIHierarchyItem node = _node as UIHierarchyItem;
-                    foreach (string path in projectInfo.Path.Split('/'))
+                    foreach (string path in projectInfo.SolutionExplorerTreePath.Split('/'))
                     {
                         UIHierarchyItem subnode = null;
                         foreach (UIHierarchyItem item in node.UIHierarchyItems)
@@ -239,7 +261,7 @@ namespace input_startup_project
                         return true;
                     }
                 }
-                ShowInternalError($"[errorcode=2] Cannot navigate to {projectInfo.Path}");
+                ShowInternalError($"[errorcode=2] Cannot navigate to {projectInfo.SolutionExplorerTreePath}");
                 return false;
             }
             else
@@ -371,7 +393,7 @@ namespace input_startup_project
                         }
                     }
 
-                    para.Inlines.Add(new Run($" ({project.Path})"));
+                    para.Inlines.Add(new Run($" ({project.SolutionExplorerTreePath})"));
                     para.Inlines.Add(new LineBreak());
                 }
                 if (projects.Count > 64)
