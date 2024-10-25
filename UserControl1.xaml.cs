@@ -85,6 +85,7 @@ namespace input_startup_project
             ProjectNameTextBox.Text = LoadInputText(); // 恢复上次的数据
             HandleTextChanged(ProjectNameTextBox.Text);
             ProjectNameTextBox.Focus();
+            ProjectNameTextBox.SelectAll();
         }
 
         private void InitializeSettingsStore()
