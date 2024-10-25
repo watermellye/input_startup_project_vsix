@@ -41,33 +41,46 @@ internal sealed class isp
     {
         await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-        if (inputWindow == null)
+        var inputControl = new InputControl();
+        inputWindow = new System.Windows.Window
         {
-            var inputControl = new InputControl();
-            inputWindow = new System.Windows.Window
-            {
-                Title = "设置启动项 (按 Esc 关闭窗口)",
-                Content = inputControl,
-                Width = 720,
-                Height = 480,
-                Topmost = true
-            };
+            Title = "设置启动项 (按 Esc 关闭窗口)",
+            Content = inputControl,
+            Width = 720,
+            Height = 480,
+            Topmost = true
+        };
 
-            inputWindow.Closed += (s, a) => inputWindow = null;
+        EnvDTE.DTE dte = (EnvDTE.DTE)await ServiceProvider.GetServiceAsync(typeof(EnvDTE.DTE));
+        IntPtr mainWindowHandle = dte.MainWindow.HWnd;
+        new System.Windows.Interop.WindowInteropHelper(inputWindow).Owner = mainWindowHandle;
 
-            // 使用 lambda 表达式处理 PreviewKeyDown 事件
-            inputWindow.PreviewKeyDown += (s, args) =>
-            {
-                if (args.Key == Key.Escape)
-                {
-                    inputWindow.Close();
-                }
-            };
+        if (GetWindowRect(mainWindowHandle, out RECT rect))
+        {
+            inputWindow.Left = rect.Left + 128;
+            inputWindow.Top = rect.Top + 128;
         }
 
+        inputWindow.PreviewKeyDown += (s, args) =>
+        {
+            if (args.Key == Key.Escape)
+            {
+                inputWindow.Close();
+            }
+        };
+
         inputWindow.ShowDialog();
-        //inputWindow.Show();
-        //inputWindow.Activate(); // Bring the existing window to the front.
-        //inputWindow.Focus();
     }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct RECT
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 }

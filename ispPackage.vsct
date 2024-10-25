@@ -83,6 +83,10 @@
         context="UICONTEXT_SolutionHasMultipleProjects" />
   </VisibilityConstraints>
 
+  <KeyBindings>
+    <KeyBinding guid="guidispPackageCmdSet" id="ispId" editor="guidVSStd97" key1="1" mod1="Control" key2="2" mod2="Control" />
+  </KeyBindings>
+
   <Symbols>
     <!-- This is the package guid. -->
     <GuidSymbol name="guidispPackage" value="{91efb582-30dd-43ad-ab8f-6ca57a368463}" />
